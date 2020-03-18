@@ -28,7 +28,8 @@ import os
 import random
 from cifar100_reduced_dataset import *
 
-load_flag=0 # set to 0 to prune, set to 1 to load the result 
+load_flag=1 # set to 0 to prune, set to 1 to load the result 
+laptop=0
 class cifar100vgg:
     def __init__(self,train=False):
         self.num_classes = 100
@@ -242,7 +243,8 @@ class cifar100vgg:
         return mega_list
        
         
-    def random_pruning(self,matrix,P):
+    def random_pruning(self,matrix,P,default=[]):
+        
         from kerassurgeon import Surgeon
         surgeon = Surgeon(self.model)
         layer_list=self.model.layers # list of layers in the model e.g [<keras.engine.input_layer.InputLayer at 0x2068f6c2048>,...
@@ -257,36 +259,41 @@ class cifar100vgg:
         # print('num,er of filters=',n_filters)
         # return n_filters
         mega_list=[]   
-        for kk in range(len(to_prune_list)): # iterate on each convolutional layer 
-            num_filter_layer=n_filters[kk]# number of filters in the current layer, which is to_prune_list[kk]
-            random_index=[] # index of the filters to be pruned 
-            for jj in range(int(np.ceil(P*num_filter_layer))): # P% of the filters 
-                tmp=np.random.randint(0,num_filter_layer)
-                while tmp in random_index:
-                    tmp=np.random.randint(0,num_filter_layer) # if the filter has alread benn choosen, try again 
-                random_index.append(tmp)
-               
-            mega_list.append(random_index) # contain a list of all the random index of that layer, the length of the mega list is thus the length 
-            # of the convolutional filters 
-            layerr=self.model.layers[to_prune_list[kk]]
-            print(str(layerr))
-            surgeon.add_job('delete_channels', layerr, channels=random_index) 
-            
+        if default==[]:
+            for kk in range(len(to_prune_list)): # iterate on each convolutional layer 
+                num_filter_layer=n_filters[kk]# number of filters in the current layer, which is to_prune_list[kk]
+                random_index=[] # index of the filters to be pruned 
+                for jj in range(int(np.ceil(P*num_filter_layer))): # P% of the filters 
+                    tmp=np.random.randint(0,num_filter_layer)
+                    while tmp in random_index:
+                        tmp=np.random.randint(0,num_filter_layer) # if the filter has alread benn choosen, try again 
+                    random_index.append(tmp)
+                   
+                mega_list.append(random_index) # contain a list of all the random index of that layer, the length of the mega list is thus the length 
+                # of the convolutional filters 
+                layerr=self.model.layers[to_prune_list[kk]]
+                print(str(layerr))
+                surgeon.add_job('delete_channels', layerr, channels=random_index) 
+        else:
+            print('using passed filters to prune')
+            for idx,i in enumerate(default):
+                layerr=self.model.layers[to_prune_list[idx]]
+                surgeon.add_job('delete_channels', layerr, channels=i) 
         self.model = surgeon.operate()
         matrix.append(mega_list)
         return matrix
-    def train(self,model,x_train,y_train,x_test,y_test,x_val,y_val,num_classes):
-        # self.model.load_weights('H:\\DOWNLOAD2\\cifar100vgg.h5')
+    def train(self,x_train,y_train,x_test,y_test,x_val,y_val,num_classes):
+        # self.model.load_weights('H:\\DOWNLOAD2\\cifar100vgg.h5') #base model pre trained on 100 classes
         #training parameters
         batch_size = 256
-        maxepoches = 100
+        maxepoches = 150
         learning_rate = 0.01
         lr_decay = 1e-6
         lr_drop = 40
         x_train = x_train.astype('float32')
         x_test = x_test.astype('float32')
         x_val = x_val.astype('float32')
-        x_train, x_test,x_val = self.normalize(x_train, x_test,x_val)        # y_train = keras.utils.to_categorical(y_train,num_classes) 
+        x_train, x_test,x_val = self.normalize(x_train, x_test,x_val)
         def lr_scheduler(epoch):
             return learning_rate * (0.5 ** (epoch // lr_drop))
         reduce_lr = keras.callbacks.LearningRateScheduler(lr_scheduler)
@@ -310,22 +317,25 @@ class cifar100vgg:
         self.model.compile(loss='categorical_crossentropy', optimizer=sgd,metrics=['accuracy'])
         # NAME='cifar_100_reduced{}'.format(int(time.time()))
         # tensorboard=TensorBoard(log_dir='R:/logs/{}'.format(NAME))
-        early = EarlyStopping(monitor='val_acc', min_delta=0.001, patience=50, verbose=1, mode='auto')
+        early = EarlyStopping(monitor='val_acc', min_delta=0.005, patience=40, verbose=1, mode='auto')
         # training process in a for loop with learning rate drop every 25 epoches.
         check_name='G:\\cifar100_best_TMP.h5'
-        checkpoint = ModelCheckpoint(check_name,monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=True, mode='auto', period=2)
+        checkpoint = ModelCheckpoint(check_name,monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=True, mode='auto', period=1)
         historytemp = self.model.fit_generator(datagen.flow(x_train, y_train,
-                                         batch_size=batch_size),
+                            batch_size=batch_size),
                             steps_per_epoch=x_train.shape[0] // batch_size,
-                            epochs=maxepoches,
-                            validation_data=(x_val, y_val),callbacks=[early,checkpoint],verbose=0)
+                            epochs=maxepoches, validation_data=(x_val, y_val),
+                            callbacks=[early,checkpoint],verbose=1)
+        
         # reduce_lr,
         self.model.load_weights(check_name)
-        self.score=self.model.evaluate(x_test,y_test)
-        
+        score_val=self.model.evaluate(x_val,y_val)
+        score_test=self.model.evaluate(x_test,y_test)
         # model.save_weights('cifar100vgg.h5')
-        print('score=',self.score)
-        return model,self.score,historytemp
+        
+        print('score_val={},score_terst={}'.format(score_val,score_test))
+        return score_val[1],score_test[1]
+
    
         
     
@@ -333,103 +343,40 @@ class cifar100vgg:
     
     
 if __name__ == '__main__':
-    (x_train, y_train), (x_test, y_test) = cifar100.load_data()
-    x_train = x_train.astype('float32')
-    x_test = x_test.astype('float32')
 
-    y_train = keras.utils.to_categorical(y_train, 100)
-    y_test = keras.utils.to_categorical(y_test, 100)
-#list of cifar 100 classes
-CIFAR100_LABELS_LIST = [
-    'apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 
-    'bicycle', 'bottle', 'bowl', 'boy', 'bridge', 'bus', 'butterfly', 'camel', 
-    'can', 'castle', 'caterpillar', 'cattle', 'chair', 'chimpanzee', 'clock', 
-    'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur', 
-    'dolphin', 'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster', 
-    'house', 'kangaroo', 'keyboard', 'lamp', 'lawn_mower', 'leopard', 'lion',
-    'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle', 'mountain', 'mouse',
-    'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear',
-    'pickup_truck', 'pine_tree', 'plain', 'plate', 'poppy', 'porcupine',
-    'possum', 'rabbit', 'raccoon', 'ray', 'road', 'rocket', 'rose',
-    'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper', 'snail', 'snake',
-    'spider', 'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table',
-    'tank', 'telephone', 'television', 'tiger', 'tractor', 'train', 'trout',
-    'tulip', 'turtle', 'wardrobe', 'whale', 'willow_tree', 'wolf', 'woman',
-    'worm'
-]
-#load dataset
-(x_train, y_train), (x_test, y_test) = cifar100.load_data()
-# x_train = x_train.astype('float32')
-# x_test = x_test.astype('float32')
-#semplified list of class
-usefull_classes=['man','woman','wolf']
-tmp=[ CIFAR100_LABELS_LIST.index(i) for i in usefull_classes]
-x_test_reduced=[]
-y_test_reduced=[]
-x_train_reduced=[]
-y_train_reduced=[]
-new_index=0
-
-# now removing all the unnecessary patterns
-
-for i in tmp:
-    for k in range(len(x_test)):
-        if y_test[k]==i:
-            x_test_reduced.append(x_test[k])
-            y_test_reduced.append(np.array([new_index]))
-        
-    new_index+=1
-new_index=0
-for i in tmp:
-    for k in range(len(x_train)):
-        if y_train[k]==i:
-            x_train_reduced.append(x_train[k])
-            y_train_reduced.append(np.array([new_index]))
-            
-
-    new_index+=1
-
-
-x_test_reduced=np.array(x_test_reduced)
-x_train_reduced=np.array(x_train_reduced)
-y_train_reduced=np.array(y_train_reduced)
-y_test_reduced=np.array(y_test_reduced)
-
-
-#check for 
-count_index_test=[]
-for i in y_train_reduced:
-    if i not in count_index_test:
-        count_index_test.append(i)        
-
-count_index_train=[]
-for i in y_train_reduced:
-    if i not in count_index_train:
-        count_index_train.append(i)        
-if len(count_index_test)!=3 or len(count_index_train)!=3:
-    print('error')
 
 # y_train_reduced = keras.utils.to_categorical(y_train_reduced, 100)
 # y_test_reduced = keras.utils.to_categorical(y_test_reduced, 100)
 # if the load flag is set to 0 the script will simply load the matrices, else it will to N pruning 
 #generation with a P% pruning rate in every convolutional layer 
-PP=[0.0]
-random_matrix_08=[]
-random_matrix_05=[]
+PP=[0.8]
+
 
 # P=0.4 # pruning rate 
 n=4223
-P=0.8
 path_to_files='R:\\mygithub\\random_pruning\\matrix_\\'
+if laptop==1:
+    path_to_files='C:\\mygithub\\random_pruning\\matrix_\\'
+
+result=[]
 x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_val_reduced2,y_val_reduced2=cifar100_reduced_dataset(path_to_files)
 for P in PP:
     if not load_flag:
-        for i in range(1):
+        for i in range(100):
             # model.train(model,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,3)
+            try:
+        
+                result=np.load(path_to_files+'random_{}_.npy'.format(P*100))
+            except:
+                print('no files to load')
            
             print('iteration number:',i)
             model = cifar100vgg(train=0) # build the model
-            model.load('R:\\coco_dataset\\dati_salvati\\cifar100_baseline.h5') #load the pre trained model, change the path to the saved model
+            
+            if laptop==1:
+                model.load('C:\\mygithub\\random_pruning\\cifar100_baseline.h5')
+            else:
+                model.load('R:\\coco_dataset\\dati_salvati\\cifar100_baseline.h5') #load the pre trained model, change the path to the saved model
         
             # score=model.evaluate(x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_val_reduced2,y_val_reduced2,3)
             tmp=[0 for i in range(n)]
@@ -437,35 +384,14 @@ for P in PP:
             for i in pruning_idx:
                 tmp[i]=1
                 
-            gigi=model.selection_pruning(tmp) # 
-            
-            
-            y_train_reduced = keras.utils.to_categorical(y_train_reduced, 3)
-            y_test_reduced = keras.utils.to_categorical(y_test_reduced, 3)
-            _,score,historytemp=model.train(model,x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_val_reduced2,y_val_reduced2,3)
-
-        
-        
-        
-            # matrix=[]
-            # matrix=model.random_pruning(matrix,0.8)
-            # model_copia=model
-            # model=model_copia
-
-            # y_train_reduced = keras.utils.to_categorical(y_train_reduced, 3)
-            # y_test_reduced = keras.utils.to_categorical(y_test_reduced, 3)
-            # _,score,historytemp=model.train(model,x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_test_reduced2,y_test_reduced2,3)
-            if P==0.5:
-                random_matrix_05.append([tmp,score[1]])
-            if P==0.8:
-                random_matrix_08.append([tmp,score[1]])
-            
+            _=model.selection_pruning(tmp) # 
+            val_acc,test_acc=model.train(model,x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_val_reduced2,y_val_reduced2,3)
+            result.append([tmp,val_acc,test_acc])
             # matrix[-1].append(score)
             del model # delete the model and clear the memory 
             K.clear_session()
             tf.reset_default_graph()
-                
-            
+            np.save(path_to_files+'random_{}_.npy'.format(P*100),result)
             
     #     path='R:\\matrix_{}'.format(int(P*100)) #path to the saved matrix folder 
     #     if not os.path.exists(path):

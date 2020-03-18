@@ -37,7 +37,8 @@ from cifar100VGG import cifar100vgg # import the architecture and all the module
 import random
 from deap import tools     
 import itertools
-
+from numexpr.utils import set_vml_num_threads
+set_vml_num_threads(16)
 path_to_files='R:\\mygithub\\random_pruning\\matrix_\\'
 x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced=cifar100_reduced_dataset(path_to_files)
 
@@ -79,10 +80,10 @@ if __name__ == '__main__':
         model.load('R:\\coco_dataset\\dati_salvati\\cifar100_baseline.h5') #load the pre trained model, change the path to the saved model
         _=model.selection_pruning(individual) # 
 
-        _,score=model.train(model,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,3)
+        score_val,score_test=model.train(x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,3)
 
-        total_score=0.6*score[-1]+0.4*(sum(individual))
-        MATRIX.append([individual,score[-1],total_score])
+        total_score=0.6*score_val+0.4*(sum(individual))
+        MATRIX.append([individual,score_val,score_test,total_score])
         # gen_matrix.append([mega_list,score,sum(individual),total_score])
         del model # delete the model and clear the memory 
         K.clear_session()
@@ -90,11 +91,8 @@ if __name__ == '__main__':
         return total_score,MATRIX
     
     toolbox.register("evaluate", evaluate)
-
     # a,MATRIX=toolbox.evaluate(pop[1],x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,MATRIX)
-  
     toolbox.register("mate", tools.cxTwoPoint)
-    
     toolbox.register("mutate", tools.mutFlipBit, indpb=0.1) # OK
     toolbox.register("select_b", tools.selBest) #OK    # da un torneo di tournsize
     toolbox.register("select_w",tools.selWorst)
@@ -103,10 +101,7 @@ if __name__ == '__main__':
     pop = toolbox.population(n=50) # popolazione, numero di elementi che mi ritrovo dall'inizio alla fine 
     
     
-    
-
     def sort_ind(population):
-    
         pop_copy=toolbox.clone(population)
         new_pop=[]
         for i in range(len(population)):
@@ -145,11 +140,10 @@ if __name__ == '__main__':
             new_child.append(kk[0])
             new_child.append(kk[1])
         return new_child
-   
     
     
     # data['-1']=[pop,gen_matrix]
-    for g in range(7): #si cicla sul numero di generazioni
+    for g in range(4): #si cicla sul numero di generazioni
         print(g)   # Select the next generation individuals
         # gen_matrix=[]
         
@@ -224,7 +218,7 @@ if __name__ == '__main__':
         # offspring.append(best[0])
        
         offspring=sort_ind(offspring)
-        pop=offspring[0:48]
+        pop=offspring[0:49]
         pop.append(best[0])
         # pop[:] = offspring   
         # data['{}'.format(g)]=[pop,gen_matrix]
@@ -309,12 +303,12 @@ if __name__ == '__main__':
 #         # # data=data.item()
 #         # # resulT=np.array(data['accuracy'])   
           
-        plt.hist(resulT, color = 'blue', edgecolor = 'black',bins = 30)
-        plt.show()
-        # Add labels
-        plt.title('Distribution accuracy on semi-random pruning, always train ')
-        plt.xlabel('Accuracy on test set')
-        plt.ylabel('Number of CNN generated')
+        # plt.hist(resulT, color = 'blue', edgecolor = 'black',bins = 30)
+        # plt.show()
+        # # Add labels
+        # plt.title('Distribution accuracy on semi-random pruning, always train ')
+        # plt.xlabel('Accuracy on test set')
+        # plt.ylabel('Number of CNN generated')
         
         # print('numero campioni:',len(resulT))
 
@@ -387,17 +381,17 @@ if __name__ == '__main__':
 resulT=[]
 matrixcopia=MATRIX
 for i in MATRIX:
-    resulT.append(i[1])
+    resulT.append(i[2])
 
 
 
-# # bins = np.linspace(0.45, 0.85, 100)
-# # plt.title('Distribution accuracy on semi-random pruning, always train vs train if val<0.7')
+bins = np.linspace(0.45, 0.85, 100)
+plt.title('Distribution accuracy on semi-random pruning, always train vs train if val<0.7')
 
-# # plt.hist(result, bins, alpha=0.7, label='always train',color = 'red')
-# # plt.hist(result2, bins, alpha=0.4, label='if acc <0.7',color = 'black')
-# # plt.legend(loc='upper right')
-# # plt.show()
+plt.hist(result, bins, alpha=0.7, label='always train',color = 'red')
+plt.hist(result2, bins, alpha=0.4, label='if acc <0.7',color = 'black')
+plt.legend(loc='upper right')
+plt.show()
         
 
 # import time

@@ -7,8 +7,9 @@ Created on Sat Feb 29 11:00:49 2020
 import os
 import numpy as np
 def cifar100_reduced_dataset(path):
-    
-    path='R:\\mygithub\\random_pruning\\matrix_\\'
+
+    if not os.path.exists(path):
+        os.mkdir(path)
 
     if not os.path.exists(path+'x_train_reduced.npy'): #check if the dataset has already been generated
         print('file not in folder: generating dataset')
