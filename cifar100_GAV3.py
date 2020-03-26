@@ -55,21 +55,10 @@ from datetime import datetime
 path_to_files='R:\\mygithub\\random_pruning\\matrix_\\'
 x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced=cifar100_reduced_dataset(path_to_files)
 
-
-# model = cifar100vgg(train=0) # build the model
-# model.load('R:\mygithub\\'+'cifar100_baseline.h5') #load the pre trained model, change the path to the saved model
-# a=toolbox.evaluate(vec,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced)
-# _,score=model.train(model,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,3)
-
-# vec=[1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1]
 data={}
 if __name__ == '__main__':
- 
-# if the load flag is set to 0 the script will simply load the matrices, else it will to N pruning 
-#generation with a P% pruning rate in every convolutional layer 
     P=0.8
     MATRIX=[]
-
     from deap import base, creator
     creator.create("FitnessMax", base.Fitness, weights=(1.0,)) # pesi=-1 per minimizzazione,deve essere comunque una tupla,
     # se si usano più valori diventa una ottimizzazione multiobbiettivo 
@@ -114,9 +103,11 @@ if __name__ == '__main__':
     toolbox.register("select_w",tools.selWorst)
     toolbox.register("evaluate", evaluate)
     CXPB, MUTPB= 0.3, 0.3 # probabilità dicrossover 0,5, prob di mutazione 20%,40 gen
-    pop = toolbox.population(n=50) # popolazione, numero di elementi che mi ritrovo dall'inizio alla fine 
-    megapop=np.load('R:\\mygithub\\random_pruning\\matrix_\\genetico_mega_pop_80.0_03_19_20_09_49.npy',allow_pickle=True)
-    pop=megapop[-1][0]
+    N=30 # number of individual in population 
+    pop = toolbox.population(n=N) # popolazione, numero di elementi che mi ritrovo dall'inizio alla fine 
+    count_ind=N
+    # megapop=np.load('R:\\mygithub\\random_pruning\\matrix_\\genetico_mega_pop_80.0_03_19_20_09_49.npy',allow_pickle=True)
+    # pop=megapop[-1][0]
     
     def sort_ind(population):
         pop_copy=toolbox.clone(population)
@@ -131,23 +122,17 @@ if __name__ == '__main__':
     
     start_time=time.time()
     # Evaluate the entire population
-    # x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced=cifar100_reduced_dataset(path_to_files)
     fitnesses=[0]*len(pop) #inizialmente lunga 50 
     start_time=time.time()
-    mega_pop=[]
+    mega_pop=[]# contain all the population for every generation, keeping track of the individuals
     for idx,i in enumerate(pop):
         print('individuo numero{} su {}'.format(idx,len(pop)))
         fitnesses[idx],MATRIX=toolbox.evaluate(i,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,MATRIX)
     # fitnesses = list(map(toolbox.evaluate, pop,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced)) # lista di fitness, lunga quanto il numero di individui nella popolazione 
     for ind, fit in zip(pop, fitnesses):
-        ind.fitness.values =(fit,) # fit è una tupla di dimensione 1 
-        
+        ind.fitness.values =(fit,) # fit è una tupla di dimensione 1   
     mega_pop.append(pop)  
-    # pop1=sort_ind(pop) # lista ordinata, perfetto
-    
-    # forced crossover between the best 5
-    
-    
+
     def crossover_best(list1):
         new_child=[]
         lista=list(itertools.permutations(list1,2))
@@ -160,28 +145,17 @@ if __name__ == '__main__':
             new_child.append(kk[1])
         return new_child
     
-    
-    # data['-1']=[pop,gen_matrix]
-    for g in range(4): #si cicla sul numero di generazioni
+    n_gen=10
+    for g in range(n_gen): #si cicla sul numero di generazioni
          # Select the next generation individuals
-        # gen_matrix=[]
         
-        best=toolbox.select_b(pop, 1) #select the best 2 
+        best=toolbox.select_b(pop, 1) #select the best (elitism)
         print('generazione numero:',g)
         best_5=toolbox.select_b(pop,3)
         kk=crossover_best(best_5)
-        
-        # fare mutazione elevata crossover su lista originale
-        
         offspring=pop[::]
         random.shuffle(offspring)
         offspring = list(map(toolbox.clone, offspring))# superfluo? no, c'è un passaggio per riferimento e non per copia
-        # for i in best:
-        #     offspring.remove(i)
-        # Apply crossover and mutation on the offspring
-        
-        
-        
         for child1, child2 in zip(offspring[::2], offspring[1::2]): #off da 0 a 49 di 2 in 2, e da 1 a 50 di 2 in due, le due liste sono quindi (0,1),(2,3) ecc
             if random.random() < CXPB: 
                 toolbox.mate(child1, child2) 
@@ -195,50 +169,39 @@ if __name__ == '__main__':
                 del mutant.fitness.values # elimina anche qui la fitness, è possibile eliminare più volte un campo vuoto, basta che sa a chi ti stai riferendo
         
         
-        
-        
-        
-        for i in kk :
+        for i in kk : # append the forced crossover 
             offspring.append(i)
-        
             
-        
-        
-    
-        
-        # worst=toolbox.select_w(pop,1)
-        # offspring = toolbox.select(pop, len(pop)) # dalla popolazione faccio un torneo della lunghezza di toursize in modo casuale, attenzione che 
-  
-        # se avessi messo esplicitamente toursize=X mi avrebbe chiesto anche il valore di k 
-        # Clone the selected individuals
-       
-        
+        offspring.append(best[0])
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         
         
         for idx,i in enumerate(invalid_ind):
-        
+            count_ind=count_ind+1 # count the number of times an individual has been modified (evaluated)
             fitnes,MATRIX=toolbox.evaluate(i,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,MATRIX)
             i.fitness.values=(fitnes,)
-        
-        # fitnesses = list(map(toolbox.evaluate, invalid_ind,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,gen_matrix))
-        # for ind, fit in zip(invalid_ind, fitnesses):
-        #     ind.fitness.values = (fit,)
-        # # 283 su 500
-            
-            
-            
-            
-        # new_best=toolbox.select_w(offspring,1)
-        # new_worst=toolbox.select_w(offspring,1)
-        
-        # offspring.remove(new_worst[0])
-        # offspring.append(best[0])
+    
        
+        
+        
         offspring=sort_ind(offspring)
-        pop=offspring[0:49]
-        pop.append(best[0])
+        
+        pop=offspring[0:int(N*0.95)]# keeping the best 95% of N, 
+        
+        for i in range(N-int(N*0.95)): #generating a new 5%
+            tmp=offspring[-1]
+          
+            for idx,_ in enumerate(tmp):
+                tmp[idx]=0
+            new_rate=random.randint(4,8)/10 #new pruning rate between 40% and 80%
+            n=len(tmp)
+            pruning_idx=random.sample(range(n),int(new_rate*n))
+            for i in pruning_idx:
+                tmp[i]=1
+            fitnes,MATRIX=toolbox.evaluate(tmp,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,MATRIX)
+            tmp.fitness.values=(fitnes,)
+            pop.append(tmp)
         mega_pop.append([pop])
         # pop[:] = offspring   
         # data['{}'.format(g)]=[pop,gen_matrix]
@@ -265,37 +228,13 @@ now = datetime.now()
 
 current_time = now.strftime("%D_%H_%M")
 current_time=current_time.replace('/','_')
-np.save('R:\\mygithub\\random_pruning\\matrix_\\genetico_mega_pop_{}_{}.npy'.format(P*100,current_time),mega_pop)
-np.save('R:\\mygithub\\random_pruning\\matrix_\\genetico_MATRIX_{}_{}.npy'.format(P*100,current_time),MATRIX)
+# np.save('R:\\mygithub\\random_pruning\\matrix_\\genetico_mega_pop_{}_{}.npy'.format(P*100,current_time),mega_pop)
+# np.save('R:\\mygithub\\random_pruning\\matrix_\\genetico_MATRIX_{}_{}.npy'.format(P*100,current_time),MATRIX)
 
 
     
-    # maxx=[]
+ 
     
-    # for i in range(10):
-    #     print('{}'.format(i))
-        
-    #     maxx.append(data['{}'.format(i)][-1][-2][-3][-1])
-    
-    
-
-#     num_gen=5 # 
-#     for iii in range(num_gen):
-#         model = cifar100vgg(train=0) # build the model
-#         model.load('R:\\coco_dataset\\dati_salvati\\cifar100_baseline.h5') #load the pre trained model, change the path to the saved model
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
 #         print('iterazione numero:',iii)
 #         network_score=[]
         

@@ -226,6 +226,10 @@ class cifar100vgg:
         return matrix
     
     
+    def input(self):
+        return self.model.input
+    def output(self):
+        return self.model.output
     
     def selection_pruning(self,Vec):
         vec=[]

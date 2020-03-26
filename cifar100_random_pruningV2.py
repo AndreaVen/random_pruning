@@ -28,7 +28,19 @@ import os
 import random
 from cifar100_reduced_dataset import *
 
-load_flag=1 # set to 0 to prune, set to 1 to load the result 
+config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 56} ) 
+sess = tf.Session(config=config) 
+keras.backend.set_session(sess)
+
+config = tf.ConfigProto(
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1),
+    device_count = {'GPU': 1}
+)
+
+from numexpr.utils import set_vml_num_threads
+
+set_vml_num_threads(16)
+load_flag=0 # set to 0 to prune, set to 1 to load the result 
 laptop=0
 class cifar100vgg:
     def __init__(self,train=False):
@@ -342,7 +354,7 @@ class cifar100vgg:
     
     
     
-if __name__ == '__main__':
+
 
 
 # y_train_reduced = keras.utils.to_categorical(y_train_reduced, 100)
@@ -362,7 +374,7 @@ result=[]
 x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_val_reduced2,y_val_reduced2=cifar100_reduced_dataset(path_to_files)
 for P in PP:
     if not load_flag:
-        for i in range(100):
+        for i in range(200):
             # model.train(model,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,3)
             try:
         
@@ -385,13 +397,13 @@ for P in PP:
                 tmp[i]=1
                 
             _=model.selection_pruning(tmp) # 
-            val_acc,test_acc=model.train(model,x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_val_reduced2,y_val_reduced2,3)
+            val_acc,test_acc=model.train(x_train_reduced2,y_train_reduced2,x_test_reduced2,y_test_reduced2,x_val_reduced2,y_val_reduced2,3)
             result.append([tmp,val_acc,test_acc])
             # matrix[-1].append(score)
             del model # delete the model and clear the memory 
             K.clear_session()
             tf.reset_default_graph()
-            np.save(path_to_files+'random_{}_.npy'.format(P*100),result)
+            # np.save(path_to_files+'random_{}_.npy'.format(P*100),result)
             
     #     path='R:\\matrix_{}'.format(int(P*100)) #path to the saved matrix folder 
     #     if not os.path.exists(path):

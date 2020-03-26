@@ -26,34 +26,28 @@ tf.compat.v1.disable_eager_execution()
 
 
 def main(_):
-  if len(sys.argv) < 2 or sys.argv[-1].startswith('-'):
-    print('Usage: mnist_saved_model.py [--training_iteration=x] '
-          '[--model_version=y] export_dir')
-    sys.exit(-1)
-  if FLAGS.training_iteration <= 0:
-    print('Please specify a positive value for training iteration.')
-    sys.exit(-1)
-  if FLAGS.model_version <= 0:
-    print('Please specify a positive value for version number.')
-    sys.exit(-1)
 
   # Train model
   print('Training model...')
-  mnist = mnist_input_data.read_data_sets(FLAGS.work_dir, one_hot=True)
+  mnist = mnist_input_data.read_data_sets( 'R:\\guaio',one_hot=True) # inserire proprio dataset 
   sess = tf.compat.v1.InteractiveSession()
   serialized_tf_example = tf.compat.v1.placeholder(tf.string, name='tf_example')
   feature_configs = {
       'x': tf.io.FixedLenFeature(shape=[784], dtype=tf.float32),
-  }
+  }#numero di files?
   
   
   tf_example = tf.io.parse_example(serialized_tf_example, feature_configs)
   x = tf.identity(tf_example['x'], name='x')  # use tf.identity() to assign name
-  y_ = tf.compat.v1.placeholder('float', shape=[None, 10])
-  w = tf.Variable(tf.zeros([784, 10]))
-  b = tf.Variable(tf.zeros([10]))
+  y_ = tf.compat.v1.placeholder('float', shape=[None, 10]) # numero di classi
+  
+  w = tf.Variable(tf.zeros([784, 10])) # sta definendo i filtri?
+  
+  b = tf.Variable(tf.zeros([10])) #bias?
   sess.run(tf.compat.v1.global_variables_initializer())
+  
   y = tf.nn.softmax(tf.matmul(x, w) + b, name='y')
+  
   cross_entropy = -tf.math.reduce_sum(y_ * tf.math.log(y))
   train_step = tf.compat.v1.train.GradientDescentOptimizer(0.01).minimize(
       cross_entropy)
