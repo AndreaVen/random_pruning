@@ -33,14 +33,14 @@ class cifar100vgg:
         self.num_classes = 100
         self.weight_decay = 0.0005
         self.x_shape = [32,32,3]
-
+        self.name=''
         self.model = self.build_model()
         if train:
             (x_train, y_train), (x_test, y_test) = cifar100.load_data()
             # self.model,self.score = self.train(self.model,x_train,y_train,x_test,y_test)
         else:
             # self.model.load_weights('H:\\DOWNLOAD2\\cifar100vgg.h5') #inserire qui il percorso della rete pre-allenata
-            batch_size = 128
+            batch_size = 64
             maxepoches = 100
             learning_rate = 0.01
             lr_decay = 1e-6
@@ -128,6 +128,7 @@ class cifar100vgg:
         model.add(Dropout(0.5))
         model.add(Dense(self.num_classes))
         model.add(Activation('softmax'))
+        model.name=""
         return model
 
 
@@ -235,7 +236,7 @@ class cifar100vgg:
         vec=[]
         for idx,i in enumerate(Vec):
             if i==1:
-                vec.append(idx)
+                vec.append(idx) # appendo nel vettore vec gli indici dei filtri da eliminare 
         
         #this function takes a vector of indexes, if there is a 1 in the j-th position the j-th filter of the network will be pruned.
         from kerassurgeon import Surgeon # k
@@ -253,9 +254,9 @@ class cifar100vgg:
         # return n_filters
         
         
-        sumlist=[0]*len(n_filters) 
+        sumlist=[0 for i in n_filters] # vettore lungo quanto il numero di strati 
         for idx in range(len(n_filters)):
-            sumlist[idx]=sum(n_filters[0:idx+1])   
+            sumlist[idx]=sum(n_filters[0:idx+1])    #[64,64,128]->[64,128,256]
             
         # print(sumlist)
         # print('vec=',vec)
@@ -343,13 +344,17 @@ class cifar100vgg:
         self.model = surgeon.operate()
 
       
-      
-        
-    def train(self,x_train,y_train,x_test,y_test,x_val,y_val,num_classes):
+    def give_name(self,name):
+        self.name=name
+        self.model.name=name
+    def return_name(self):
+        return self.model.name
+   
+    def train(self,x_train,y_train,x_test,y_test,x_val,y_val,num_classes,path_check):
         # self.model.load_weights('H:\\DOWNLOAD2\\cifar100vgg.h5') #base model pre trained on 100 classes
         #training parameters
-        batch_size = 256
-        maxepoches = 150
+        batch_size = 128
+        maxepoches = 250
         learning_rate = 0.01
         lr_decay = 1e-6
         lr_drop = 40
@@ -382,13 +387,14 @@ class cifar100vgg:
         # tensorboard=TensorBoard(log_dir='R:/logs/{}'.format(NAME))
         early = EarlyStopping(monitor='val_acc', min_delta=0.005, patience=40, verbose=1, mode='auto')
         # training process in a for loop with learning rate drop every 25 epoches.
-        check_name='G:\\cifar100_best_TMP.h5'
+        check_name=os.path.join(path_check,'cifar100_best_TMP.h5')
+        # check_name='/home/labrizzi/Scaricati/random_pruning-master/matrix_/cifar100_best_TMP.h5'
         checkpoint = ModelCheckpoint(check_name,monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=True, mode='auto', period=1)
         historytemp = self.model.fit_generator(datagen.flow(x_train, y_train,
                             batch_size=batch_size),
                             steps_per_epoch=x_train.shape[0] // batch_size,
                             epochs=maxepoches, validation_data=(x_val, y_val),
-                            callbacks=[early,checkpoint],verbose=1)
+                            callbacks=[early,checkpoint],verbose=0)
         
         # reduce_lr,
         self.model.load_weights(check_name)
