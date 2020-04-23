@@ -51,7 +51,6 @@ config = tf.ConfigProto(
 set_vml_num_threads(16)
 from datetime import datetime
 
-
 path_to_files='R:\\mygithub\\random_pruning\\matrix_\\'
 x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced=cifar100_reduced_dataset(path_to_files)
 
@@ -82,7 +81,7 @@ if __name__ == '__main__':
         model.load('R:\\coco_dataset\\dati_salvati\\cifar100_baseline.h5') #load the pre trained model, change the path to the saved model
         _=model.selection_pruning(individual) # 
 
-        score_val,score_test=model.train(x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,3)
+        score_val,score_test=model.train(x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,3,'R:\\')
 
         total_score=0.6*score_val+0.4*(sum(individual))
         # total_score=5
@@ -231,125 +230,6 @@ current_time=current_time.replace('/','_')
 # np.save('R:\\mygithub\\random_pruning\\matrix_\\genetico_mega_pop_{}_{}.npy'.format(P*100,current_time),mega_pop)
 # np.save('R:\\mygithub\\random_pruning\\matrix_\\genetico_MATRIX_{}_{}.npy'.format(P*100,current_time),MATRIX)
 
-
-    
- 
-    
-#         print('iterazione numero:',iii)
-#         network_score=[]
-        
-            
-        
-#         _,score=model.train(model,x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,3)
-
-#         network_score.append(score)
-
-            
-#             model.save('G:\\semi_random.h5')
-#             del model # delete the model and clear the memory 
-#             K.clear_session()
-#             tf.reset_default_graph()
-#             model = cifar100vgg(train=0) # build the model
-#             model.load('G:\\semi_random.h5')
-#         my_pred=model._ct(x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,x_val_reduced,y_val_reduced,3)
-#         y_pred=np.array([np.argmax(i) for i in my_pred])
-#         del model # delete the model and clear the memory 
-#         K.clear_session()
-#         tf.reset_default_graph()
-#         data['accuracy'].append(network_score)    
-#         try:
-#            cm=sklearn.metrics.confusion_matrix(y_test_reduced,y_pred)
-#            data['cm'].append(cm)
-#         except Exception:
-#             pass
-        
-#         np.save('R:\\matrix_\\data_{}_alwaystrain_{}_in_order_num_{}___{}'.format(P,must_train,num,time.time()),data)
-#     else:
-#         data=np.load(path_to_files+'data_0.8_alwaystrain_1__1582862164.9756384.npy',allow_pickle=True)
-#         data=data.item()
-#     resulT=[]
-#     for i in data['accuracy']:
-#         resulT.append(i[-1])
-#     resulT=np.array(resulT)
-#         # # data=np.load('\\matrix_\\data_0.8_notrain.npy',allow_pickle=True)
-#         # # data=data.item()
-#         # # resulT=np.array(data['accuracy'])   
-          
-        # plt.hist(resulT, color = 'blue', edgecolor = 'black',bins = 30)
-        # plt.show()
-        # # Add labels
-        # plt.title('Distribution accuracy on semi-random pruning, always train ')
-        # plt.xlabel('Accuracy on test set')
-        # plt.ylabel('Number of CNN generated')
-        
-        # print('numero campioni:',len(resulT))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # baseline_model = cifar100vgg(train=0) # build the model
-# # baseline_model.load('R:\\coco_dataset\\dati_salvati\\cifar100_baseline.h5') #load the pre trained model, change the path to the saved model
-# # _,n_filters=baseline_model.semi_random_pruning([[]],0.1)
-
-
-# # tmp=0
-# # for i,j in zip(y_pred,y_test_reduced):
-# #     if i==j:
-# #         tmp+=1
-# # my_accuracy=tmp/len(y_test_reduced)
-
-
-
-# # y_pred=np.array([np.argmax(i) for i in my_pred])
-# # acc=np.array([0,0,0])
-# # for i in y_pred:
-# #     for kk in range(3):
-# #         if i==kk:
-# #             acc[kk]+=1
-# # acc=acc/len(x_test_reduced)       
-# # print(acc)
-# # print('mean acc:',acc.mean())
-# # my_score=model.evaluate(x_train_reduced,y_train_reduced,x_test_reduced,y_test_reduced,3)
-# # print(my_score)
-
-
-
-# # TP=[0,0,0]
-# # for i,j in zip(y_pred,y_test_reduced):
-# #     if i==j:
-# #         TP[int(i)]+=1
-
-
-# # #rows=true label, columns= predicted values
 resulT=[]
 matrixcopia=MATRIX
 for i in MATRIX:

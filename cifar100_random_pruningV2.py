@@ -28,14 +28,20 @@ import os
 import random
 from cifar100_reduced_dataset import *
 
-config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 56} ) 
-sess = tf.Session(config=config) 
-keras.backend.set_session(sess)
+from keras.backend.tensorflow_backend import set_session
 
-config = tf.ConfigProto(
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1),
-    device_count = {'GPU': 1}
-)
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.4
+set_session(tf.Session(config=config))
+
+# config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 56} ) 
+# sess = tf.Session(config=config) 
+# keras.backend.set_session(sess)
+
+# config = tf.ConfigProto(
+#     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1),
+#     device_count = {'GPU': 1}
+# )
 
 from numexpr.utils import set_vml_num_threads
 
@@ -361,7 +367,7 @@ class cifar100vgg:
 # y_test_reduced = keras.utils.to_categorical(y_test_reduced, 100)
 # if the load flag is set to 0 the script will simply load the matrices, else it will to N pruning 
 #generation with a P% pruning rate in every convolutional layer 
-PP=[0.8]
+PP=[0.9]
 
 
 # P=0.4 # pruning rate 
@@ -403,7 +409,20 @@ for P in PP:
             del model # delete the model and clear the memory 
             K.clear_session()
             tf.reset_default_graph()
-            # np.save(path_to_files+'random_{}_.npy'.format(P*100),result)
+            np.save(path_to_files+'random_{}_.npy'.format(P*100),result)
+            risultato=[]
+            for i in result2:
+                risultato.append(i[2])
+                   
+
+            plt.hist(risultato, color = 'blue', edgecolor = 'black',bins = 30)
+            plt.show()
+             # Add labels
+            plt.title('Distribution accuracy on genetic training, generation number {}')
+            plt.xlabel('Accuracy on test set')
+            plt.ylabel('Number of CNN generated')  
+            
+            result2=np.load(path_to_files+'random_{}_.npy'.format(P*100),allow_pickle=True)
             
     #     path='R:\\matrix_{}'.format(int(P*100)) #path to the saved matrix folder 
     #     if not os.path.exists(path):
